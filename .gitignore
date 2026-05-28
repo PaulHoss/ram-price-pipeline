@@ -1,0 +1,29 @@
+# Python bytecode and cache (Generated automatically when running scripts, not needed in version control)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local Environment & Secrets (Never commit credentials, API keys, or AWS tokens)
+.env
+.secrets
+secrets.json
+
+# Virtual Environments (Local dependencies installed via pip)
+venv/
+.venv/
+env/
+backend-env/
+
+# IDE / Editor Settings (Keeps personal VS Code setup out of the repository)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
