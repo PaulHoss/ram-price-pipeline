@@ -38,10 +38,8 @@ def check_json_ld(url):
                 print(json.dumps(product_data, indent=2))
             except json.JSONDecodeError as e:
                 print(f"JSON parsing error in block #{index}: {e}")
-
-if __name__ == "__main__":
-    url = "placeholder"  # This will be replaced by user input
-    check_json_ld(url)
+        else:
+            print(f"Block #{index} does not contain Product Schema.")
 
 # Product URLs for Primary Scraping Targets (to be used in scraper.py)
 newegg_vengeanceP = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007"
@@ -62,12 +60,20 @@ dict_product_urls = {
     "6": newegg_tridentS
 }
 
-print("Select a product to check for JSON-LD structured data:")
-for key in dict_product_urls:
-    print(f"{key}. {dict_product_urls[key]}")
+# 
+def main():
+    print("Select a product to check for JSON-LD structured data:")
+    for key in dict_product_urls:
+        print(f"{key}. {dict_product_urls[key]}")
 
-key = input("Enter the number of the product you want to check: ")
-if key in dict_product_urls:
-    check_json_ld(dict_product_urls[key])
-else:
-    print("Invalid selection.")
+    key = input("Enter the number of the product you want to check (q to quit): ")
+
+    if key == "q":
+        print("Quitting...")
+    elif key in dict_product_urls:
+        check_json_ld(dict_product_urls[key])
+    else:
+        print("Invalid selection.")
+
+if __name__ == "__main__":
+    main()

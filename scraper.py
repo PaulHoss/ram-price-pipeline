@@ -3,9 +3,10 @@ import requests
 import json
 import datetime
 from bs4 import BeautifulSoup
+from product_registry import get_product_registry
 
-# This function fetches the HTML content of a given URL and returns it as text. It includes error handling for network issues and non-200 HTTP responses.
 def fetch_page(url):
+    '''Fetches the HTML content of a given URL and returns it as text. Handles network errors and non-200 HTTP responses.'''
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
@@ -20,130 +21,137 @@ def fetch_page(url):
         print(f"Network error: {e}")
     return None
 
-# This function takes the HTML content of a Newegg product page and extracts the product title and price using BeautifulSoup. It returns a dictionary with the extracted information.
-def parse_newegg_price(html_content):
-    soup = BeautifulSoup(html_content, "html.parser")
+def parse_newegg(html):
+    '''
+    Parses the HTML content of a Newegg product page to extract the product title and price.
+    Returns a dictionary with the extracted data.
+    '''
+    soup = BeautifulSoup(html, "html.parser")
 
-    # Product Title Extraction
-    title_element = soup.find("h1", class_="product-title")
-    product_title = (
-        title_element.text.strip() if title_element else "Title Not Found"
-    )
+    # Find all script blocks built for search spiders (Googlebot, Bingbot, etc.) that contain JSON-LD structured data.
+    script_tag = soup.find_all("script", type="application/ld+json")
+    product_data = None
 
-    # Price Extraction
-    price_element = soup.find("li", class_="price-current")
-    if price_element:
-        price_text = price_element.text.strip()
-        cleaned_price = "".join(
-            c for c in price_text if c.isdigit() or c == "."
-        )
+    # Loop through all JSON-LD script tags to find the one containing Product Schema dictionary
+    for tag in script_tag:
         try:
-            product_price = float(cleaned_price)
+            data = json.loads(tag.string) #Convert JSON string to Python dictionary
+            if isinstance(data, dict) and data.get("@type") == "Product":
+                product_data = data
+                break
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"Error parsing JSON: {e}")
+            continue
+
+    # If we did not find Product Schema JSON-LD, we return a dictionary with "Unknown" values to indicate that the scraper failed to find structured data on this page.
+    if not product_data:
+        print("Warning: Product Schema JSON-LD not found.")
+        return {
+            "mpn": None, 
+            "brand": None, 
+            "title": None, 
+            "currency": None, 
+            "price": None, 
+            "availability": None
+        }
+
+    # Extract core text directly without .strip() cleanups since we want to preserve the original formatting as much as possible for debugging purposes. We can always clean it up later if needed.
+    scraped_title = product_data.get("name", "Title Not Found")
+    scraped_brand = product_data.get("brand", "Brand Not Found")
+    scraped_mpn = product_data.get("mpn", "MPN Not Found")
+
+    # Extract price and currency from the offers sub-dictionary of the Product Schema if available
+    offers = product_data.get("offers", {})
+    raw_price = offers.get("price") if isinstance(offers, dict) else None
+    currency = offers.get("priceCurrency") if isinstance(offers, dict) else None
+    availability = offers.get("availability") if isinstance(offers, dict) else None
+
+    # Clean and cast data types for downstream analytics storage (SQL, data warehouses, etc.)
+    product_price = None
+    if raw_price is not None:
+        try:
+            product_price = float(str(raw_price).strip()) # Cast directly to decimal float and handle any leading/trailing whitespaces
         except ValueError:
+            print(f"Price parsing error: {raw_price} is not a valid number.")
             product_price = None
-    else:
-        product_price = None
+    
+    cleaned_availability = "Unknown"
+    if availability:
+        cleaned_availability = availability.split("/")[-1] if "/" in availability else availability
 
-    return {"title": product_title, "price": product_price}
+    # Return clean structured dictionary for downstream analytics layers
+    return {
+        "mpn": scraped_mpn,
+        "brand": scraped_brand,
+        "title": scraped_title,
+        "currency": currency,
+        "price": product_price,
+        "availability": cleaned_availability
+    }
 
-# Main execution block to run the scraper for a predefined list of products. It fetches the page, parses the price, and prints the results in a structured format.
-if __name__ == "__main__":
-    # The structured item master registry
-    product_registry = [
-        {
-            "mpn": "CMK32GX5M2B6000C30",
-            "brand": "Corsair",
-            "model": "Vengeance",
-            "url": "https://www.newegg.com/corsair-32gb-ddr5-intel-xmp-cmk32gx5m2b6000c30/p/N82E16820236931",
-        },
-        {
-            "mpn": "F5-6000J3040F16GX2-RS5K",
-            "brand": "G.Skill",
-            "model": "Ripjaws S5",
-            "url": "https://www.newegg.com/g-skill-32gb-ddr5-intel-xmp-f5-6000J3040F16GX2-RS5K/p/N82E16820374430",
-        },
-        {
-            "mpn": "F5-6000J3040F16GX2-TZ5K",
-            "brand": "G.Skill",
-            "model": "Trident Z5",
-            "url": "https://www.newegg.com/g-skill-32gb-ddr5-intel-xmp-f5-6000j3040F16GX2-TZ5K/p/N82E16820374358",
-        },
-    ]
 
-    print("--- Starting Pipeline Processing Loop ---")
+def run_pipeline():
+    '''
+    Main execution block to run the scraper for a predefined list of products.
+    It fetches the page, parses the price, and prints the results in a structured format.
+    This is where we (not at this phase in development yet) push the data to a database, data warehouse, or analytics platform instead of just printing it.
+    '''
+    # Load the product registry from the product_registry module.
+    registry = get_product_registry()
+    
+    print("--- Starting Structured JSON-LD Scraper Pipeline ---")
 
     # Loop through each product in the registry, fetch the page, parse the price, and print the results
-    for item in product_registry:
+    for item in registry:
         print(f"Processing MPN: {item['mpn']}...")
         html = fetch_page(item["url"])
 
-        # Only proceed to parsing if we successfully fetched the page content
+        # Default values for the data payload in case of any failures during fetching or parsing. This ensures that we have a consistent data structure for downstream processing and analytics, even if some fields are missing due to scraping issues.
+        extracted_data = {"title": None, "currency": None, "price": None, "availability": None}
+        error_msg = None
+
+        # Attempt to parse the HTML content if the network request was successful.
+        # We wrap this in a defensive try/except block to isolate layout errors or data discrepancies
+        # from breaking the overall extraction pipeline. This way, if we encounter a page that has changed its structure or is missing expected data, we can log the error and continue processing the rest of the products in our registry without crashing the entire scraper.
         if html:
-            extracted_data = parse_newegg_price(html)
+            try:
+                parsed_data = parse_newegg(html)
+                if parsed_data:
+                    extracted_data = parsed_data
+                    # If the page loaded successfully but we couldn't find a price in the JSON-LD, we want to flag that as a specific error case in our analytics so we can track how often this happens and potentially identify patterns (e.g., certain products or retailers that frequently fail to include price data in their structured data).
+                    if extracted_data["price"] is None:
+                        error_msg = "Page loaded, but price not found in JSON-LD schema."
+                else:
+                    error_msg = "Page loaded, but failed to parse JSON-LD data."
+            except Exception as e:
+                error_msg = f"Parsing code crashed: {str(e)}"
+        else:
+            error_msg = "Network request failed (bad status code or timeout)"
 
-            # Combine metadata matrix with scraped real-time facts
-            data_payload = {
-                "timestamp": datetime.datetime.now(
-                    datetime.timezone.utc
-                    ).isoformat(),
-                "mpn": item["mpn"],
-                "brand": item["brand"],
-                "model": item["model"],
-                "scraped_title": extracted_data["title"],
-                "price": extracted_data["price"],
-                "retailer": "Newegg",
+        # Set status based on whether we successfully extracted a price. This is a simple pass/fail status that can be used in our analytics to track the overall success rate of our scraper and identify any trends or issues with specific products or retailers.
+        pipeline_status = "Pass" if extracted_data["price"] is not None else "Fail"
+
+        # Combine steady structural dimensions with real-time facts and operation metadata into a single payload for downstream analytics. This structured format allows us to easily store and analyze the data in a database or data warehouse, and also provides rich context for each price point we collect (e.g., which product it is, when we collected it, whether the scraper succeeded or failed, etc.).
+        data_payload = {
+            "mpn": item["mpn"],
+            "brand": item["brand"],
+            "gen": item["gen"],
+            "model": item["model"],
+            "scraped_title": extracted_data["title"],
+            "currency": extracted_data["currency"],
+            "price": extracted_data["price"],
+            "availability": extracted_data["availability"],
+            "retailer": "Newegg",
+            "timestamp": datetime.datetime.now(
+                datetime.timezone.utc
+                ).isoformat(),
+            "pipeline_status": pipeline_status,
+            "error": error_msg
             }
-
-            print(json.dumps(data_payload, indent=4))
-            print("-" * 40)
-
-
-'''Old code for parsing CSS-based price data (will be deleted later) keeping it here incase other pages do not have JSON-LD structured data and I need to fall back to this method.
-def scrape_ram_price():
-    # Target URL: A popular Corsair Vengeance DDR5 32GB Kit on Newegg
-    url = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007"
-    
-    # Standard headers to prevent immediate bot blocking
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-
-    # Parse HTML content
-    soup = BeautifulSoup(response.text, "html.parser")
-    
-    #Isolate the script tag containing product data (if available)
-    script_tag = soup.find("script", type="application/ld+json")
-    if script_tag:
-        #Extract and print the JSON-LD data for debugging purposes
-        try:
-            product_data = json.loads(script_tag.string)
-            print("\n--- Product Data (from JSON-LD) ---")
-            print(json.dumps(product_data, indent=2))
-        except json.JSONDecodeError:
-            print("Failed to parse JSON-LD data.")
-    else:
-        print("No JSON-LD script tag found on the page.")
-
-    # Extract Product Title
-    # Newegg typically stores product names in an h1 tag with class 'product-title'
-    title_element = soup.find("h1", class_="product-title")
-    product_title = title_element.text.strip() if title_element else "Title Not Found"
-    
-    # Extract Price
-    # Prices on Newegg are often found in a list item with class 'price-current'
-    price_element = soup.find("li", class_="price-current")
-    if price_element:
-        # Grabbing the strong text (dollars) and sup text (cents)
-        price_text = price_element.text.strip()
-        # Clean up string formatting (removing weird symbols/whitespaces)
-        product_price = "".join(price_text.split())
-    else:
-        product_price = "Price Not Found"
         
-    print("\n--- Scraping Results ---")
-    print(f"Product: {product_title}")
-    print(f"Price:   {product_price}")
+        # For demonstration purposes, we print the structured data payload. In a production pipeline, this would be where we push the data to a database, data warehouse, or analytics platform.
+        print(json.dumps(data_payload, indent=4))
+        print("-" * 40)
 
 if __name__ == "__main__":
-    scrape_ram_price()
-'''
+    run_pipeline()
