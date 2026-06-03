@@ -51,13 +51,18 @@ newegg_vengeanceS = "https://www.newegg.com/corsair-vengeance-lpx-32gb-ddr4-3200
 newegg_ripjawsS = "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091"
 newegg_tridentS = "https://www.newegg.com/g-skill-tridentz-rgb-series-32gb-ddr4-3600-cas-latency-cl16-desktop-memory-black/p/N82E16820232906"
 
+# Test a new link here, paste over existing link
+test = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007?Item=9SIA2W0KT79694"
+
+# Dictionary to store product URLs
 dict_product_urls = {
     "1": newegg_vengeanceP,
     "2": newegg_ripjawsP,
     "3": newegg_tridentP,
     "4": newegg_vengeanceS,
     "5": newegg_ripjawsS,
-    "6": newegg_tridentS
+    "6": newegg_tridentS,
+    "7": test
 }
 
 # 
