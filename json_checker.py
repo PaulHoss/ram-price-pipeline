@@ -42,14 +42,14 @@ def check_json_ld(url):
             print(f"Block #{index} does not contain Product Schema.")
 
 # Product URLs for Primary Scraping Targets (to be used in scraper.py)
-newegg_vengeanceP = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007"
+newegg_vengeanceP = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007?Item=N82E16820982007&SoldByNewegg=1"
 newegg_ripjawsP = "https://www.newegg.com/g-skill-ripjaws-s5-series-32gb-ddr5-6000-cas-latency-cl30-desktop-memory-black/p/N82E16820374369?Item=N82E16820374369&SoldByNewegg=1"
 newegg_tridentP = "https://www.newegg.com/g-skill-trident-z5-series-32gb-ddr5-6000-cas-latency-cl30-desktop-memory-black/p/N82E16820374381?Item=N82E16820374381&SoldByNewegg=1"
 
 # Product URLs for Secondary Scraping Targets (to be used in scraper.py)
 newegg_vengeanceS = "https://www.newegg.com/corsair-vengeance-lpx-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820236541?Item=N82E16820236541&SoldByNewegg=1"
-newegg_ripjawsS = "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091"
-newegg_tridentS = "https://www.newegg.com/g-skill-tridentz-rgb-series-32gb-ddr4-3600-cas-latency-cl16-desktop-memory-black/p/N82E16820232906"
+newegg_ripjawsS = "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091?Item=N82E16820232091&SoldByNewegg=1"
+newegg_tridentS = "https://www.newegg.com/g-skill-tridentz-rgb-series-32gb-ddr4-3600-cas-latency-cl16-desktop-memory-black/p/N82E16820232906?Item=N82E16820232906&SoldByNewegg=1"
 
 # Test a new link here, paste over existing link
 test = "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007?Item=9SIA2W0KT79694"

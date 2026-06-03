@@ -6,7 +6,7 @@ registry = [
         "brand": "Corsair",
         "model": "Vengeance",
         "gen": "DDR5",
-        "url": "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007",
+        "url": "https://www.newegg.com/corsair-vengeance-32gb-ddr5-6000-cas-latency-30-desktop-memory-black/p/N82E16820982007?Item=N82E16820982007&SoldByNewegg=1",
         "marketplace": "Newegg"
     },
     {
@@ -39,7 +39,7 @@ registry = [
         "brand": "G.Skill",
         "model": "Ripjaws V",
         "gen": "DDR4",
-        "url" : "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091",
+        "url" : "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091?Item=N82E16820232091&SoldByNewegg=1",
         "marketplace": "Newegg"
     },
     {
@@ -47,7 +47,7 @@ registry = [
         "brand": "G.Skill",
         "model": "Trident Z RGB",
         "gen": "DDR4",
-        "url" : "https://www.newegg.com/g-skill-tridentz-rgb-series-32gb-ddr4-3600-cas-latency-cl16-desktop-memory-black/p/N82E16820232906",
+        "url" : "https://www.newegg.com/g-skill-tridentz-rgb-series-32gb-ddr4-3600-cas-latency-cl16-desktop-memory-black/p/N82E16820232906?Item=N82E16820232906&SoldByNewegg=1",
         "marketplace": "Newegg"
     },
     #Test
