@@ -27,3 +27,7 @@ backend-env/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Ignore specific files
+temp.py
+temp registry items.txt
