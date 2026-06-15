@@ -7,6 +7,7 @@ from product_registry import get_product_registry
 from curl_cffi import requests as curl_requests
 import time
 import random
+from data_lake_manager import bronze_lake_append
 
 # URL fetching function with error handling and standard headers to prevent bot blocking. 
 def fetch_page(url, marketplace):
@@ -303,7 +304,7 @@ def run_pipeline():
 
         # Create timestamp once the page has been fetched 
         timestamp = datetime.datetime.now(datetime.timezone.utc)
-        date = timestamp.date()
+        date = timestamp.date().isoformat()
 
         # Default values for the data payload in case of any failures during fetching or parsing. 
         # This ensures that we have a consistent data structure for downstream processing and analytics,
@@ -373,7 +374,7 @@ def run_pipeline():
             "condition" : extracted_data["condition"], # Condition of the product (e.g., New, Used, Refurbished, etc.)
             "seller": extracted_data["seller"], # Seller of product on the marketplace (e.g., Newegg, Amazon, etc.) 
             "marketplace": item["marketplace"], # Website/marketplace where product is sold (e.g., Newegg, Amazon, etc.)
-            "date": date.isoformat(), # Clean date information for analytics
+            "date": date, # Clean date information for analytics
             "timestamp": timestamp.isoformat(), # Full timestamp, mostly used for investigative purposes 
             "pipeline_status": pipeline_status, # Pass if price is captured, Fail otherwise
             "url_fetch_method": requests_type,
@@ -381,6 +382,12 @@ def run_pipeline():
             "parse_error": error_msg
             }
         
+        # Save data to Bronze Data Lake
+        try:
+            saved_path = bronze_lake_append(data_payload, date)
+            print(f"-> Successfully appended to Bronze Lake: {saved_path}")
+        except Exception as e:
+            print(f"CRITICAL: Failed to write to Bronze data lake: {e}")
         # For demonstration purposes, we print the structured data payload. In a production pipeline, this would be where 
         # we push the data to a database, data warehouse, or analytics platform.
         print(json.dumps(data_payload, indent=4))

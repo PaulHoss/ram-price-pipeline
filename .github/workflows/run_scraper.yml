@@ -1,0 +1,57 @@
+name: Daily E-Commerce Price Scraper
+
+# 1. Schedule the workflow to run automatically
+on:
+  schedule:
+    # Runs at 15:00 UTC every single day
+    - cron: '0 15 * * *'
+  
+  # Allows you to manually trigger the workflow anytime from the GitHub Actions tab
+  workflow_dispatch:
+
+# 2. Grant permissions to let the workflow write data back to the repository
+permissions:
+  contents: write
+
+jobs:
+  scrape_and_store:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository code onto the GitHub cloud server
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # Step 2: Set up a secure Python environment
+    - name: Set up Python 3.14
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.14'
+        cache: 'pip' # Automatically caches dependencies to speed up future runs
+
+    # Step 3: Install all required Python packages
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # Step 4: Execute the orchestrator script
+    - name: Run Scraper Pipeline
+      run: python scraper.py
+
+    # Step 5: Automatically commit and push the new Bronze layer file back to git
+    - name: Commit and Push Daily JSONL Data
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        # Stage only the newly generated or modified files in the raw data directory
+        git add data/raw/
+        
+        # Only commit and push if new files actually exist (prevents pipeline crashes if nothing changed)
+        if ! git diff --cached --quiet; then
+          git commit -m "data: auto-archived raw bronze layer $(date +'%Y-%m-%d')"
+          git push
+        else
+          echo "No new scraped data found. Skipping commit."
+        fi
