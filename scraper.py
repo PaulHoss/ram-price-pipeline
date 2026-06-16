@@ -93,6 +93,9 @@ def parse_newegg(html):
     # Loop through all JSON-LD script tags to find the one containing Product Schema dictionary
     for tag in script_tag:
         try:
+            if not tag.string:
+                print(f"Skipping tag, tag is None")
+                continue
             data = json.loads(tag.string) #Convert JSON string to Python dictionary
             if isinstance(data, dict) and data.get("@type") == "Product":
                 product_data = data
@@ -142,25 +145,7 @@ def parse_newegg(html):
     if availability:
         cleaned_availability = availability.split("/")[-1] if "/" in availability else availability
 
-    # Visual extraction of condition and seller information, this information is not held in the structured data on Newegg
-    '''# Condition block
-    try:
-        # Find parent container
-        condition_container = soup.find("div", class_="product-condition")
-        if condition_container:
-            # Find strong tag inside container if container exists
-            strong_tag = condition_container.find("strong")
-            if strong_tag and strong_tag.text.strip():
-                scraped_condition = strong_tag.text.strip()
-        # Default to "New" if condition is not explicitly stated because Newegg does not list a condition for new products.
-            else:
-                scraped_condition = "New"
-        else:
-            scraped_condition = "New" 
-    # If the HTML structure shifted we log it instead of crashing the scraper
-    except Exception as e:
-        scraped_condition = "PARSE_ERROR"'''
-    # Seller block
+    # Visual extraction of seller information, this information is not held in the structured data on Newegg
     try:
         # Find parent container
         seller_container = soup.find("div", class_="product-seller-sold-by")
@@ -209,6 +194,9 @@ def parse_bestbuy(html):
     # Loop through all JSON-LD script tags to find the one containing Product Schema dictionary
     for tag in script_tag:
         try:
+            if not tag.string:
+                print(f"Skipping tag, tag is None")
+                continue
             data = json.loads(tag.string) #Convert JSON string to Python dictionary
             if isinstance(data, dict) and data.get("@type") == "Product":
                 product_data = data
@@ -237,12 +225,31 @@ def parse_bestbuy(html):
     scraped_title = product_data.get("name", "TITLE_NOT_FOUND")
     scraped_mpn = product_data.get("model", "MPN_NOT_FOUND")
 
-    brand = product_data.get("brand", {})
-    scraped_brand = brand.get("name") if isinstance(brand, dict) else None
+    # Retrieve raw brand field
+    brand_raw = product_data.get("brand")
+    # Initialize scraped_brand to a default "missing" state
+    scraped_brand = "BRAND_NOT_FOUND"
+
+    if brand_raw:
+        # I brand is structured as a standard schema dictionary
+        if isinstance(brand_raw, dict):
+            scraped_brand = brand_raw.get("name", "BRAND_NOT_FOUND")
+            
+        # If it's an array/list of structures
+        elif isinstance(brand_raw, list) and len(brand_raw) > 0:
+            first_element = brand_raw[0]
+            if isinstance(first_element, dict):
+                scraped_brand = first_element.get("name", "BRAND_NOT_FOUND")
+            elif isinstance(first_element, str):
+                scraped_brand = first_element
+                
+        # If it's directly injected as a raw string value
+        elif isinstance(brand_raw, str):
+            scraped_brand = brand_raw
 
     # Extract price and currency from the offers sub-dictionary of the Product Schema if available
     offers = product_data.get("offers", [])
-    offer = offers[0]
+    offer = offers[0] if offers else {}
     
     raw_price = offer.get("price") if isinstance(offer, dict) else None
     currency = offer.get("priceCurrency") if isinstance(offer, dict) else None
