@@ -4,7 +4,7 @@ name: Daily E-Commerce Price Scraper
 on:
   schedule:
     # Runs at 15:00 UTC every single day
-    - cron: '0 15 * * *'
+    - cron: '0 00 * * *'
   
   # Allows you to manually trigger the workflow anytime from the GitHub Actions tab
   workflow_dispatch:
@@ -20,11 +20,11 @@ jobs:
     steps:
     # Step 1: Check out the repository code onto the GitHub cloud server
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     # Step 2: Set up a secure Python environment
     - name: Set up Python 3.14
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.14'
         cache: 'pip' # Automatically caches dependencies to speed up future runs
@@ -37,6 +37,11 @@ jobs:
 
     # Step 4: Execute the orchestrator script
     - name: Run Scraper Pipeline
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
       run: python scraper.py
 
     # Step 5: Automatically commit and push the new Bronze layer file back to git
