@@ -43,20 +43,3 @@ jobs:
         AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
       run: python scraper.py
-
-    # Step 5: Automatically commit and push the new Bronze layer file back to git
-    - name: Commit and Push Daily JSONL Data
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        
-        # Stage only the newly generated or modified files in the raw data directory
-        git add data/raw/
-        
-        # Only commit and push if new files actually exist (prevents pipeline crashes if nothing changed)
-        if ! git diff --cached --quiet; then
-          git commit -m "data: auto-archived raw bronze layer $(date +'%Y-%m-%d')"
-          git push
-        else
-          echo "No new scraped data found. Skipping commit."
-        fi
