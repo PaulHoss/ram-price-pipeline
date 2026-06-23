@@ -37,3 +37,8 @@ temp registry items.txt
 target/
 dbt_packages/
 logs/
+
+# Evidence generated files
+dashboard/sources/prices/prices.csv
+dashboard/.evidence/
+dashboard/build/

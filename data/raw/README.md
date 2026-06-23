@@ -1,0 +1,1 @@
+This data was from scrapes made prior to moving to an AWS S3 Bucket.  May delete later but keeping for now.
