@@ -70,7 +70,7 @@ order by price_date asc
     <Column id="marketplace" title="Retailer"/>
     <Column id="price" title="Price (USD)" fmt="$#,##0.00"/>
     <Column id="price_change" title="1-Day Change" fmt="$+#,##0.00;$-#,##0.00"/>
-    <Column id="price_change_pct" title="Change %" fmt="+0.00%;-0.00%"/>
+    <Column id="price_change_pct" title="Change %" fmt="+0.00'%';-0.00'%'"/>
     <Column id="price_rank_within_gen" title="Rank"/>
 </DataTable>
 
