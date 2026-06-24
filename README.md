@@ -1,10 +1,14 @@
 # RAM Price Tracker
 
-An automated data pipeline that scrapes daily RAM prices from e-commerce retailers, archives them to a Bronze data lake on S3, models them through Silver/Gold layers in dbt, and will ultimately surface insights through a dashboard or README visualization.
+An automated data pipeline that scrapes daily RAM prices from e-commerce retailers, archives them to a Bronze data lake on S3, models them through Silver/Gold layers in dbt, and surfaces insights through a live Evidence dashboard on GitHub Pages.
+
+## Live Dashboard
+
+🔗 **[ram-price-pipeline dashboard](https://paulhoss.github.io/ram-price-pipeline/)**
 
 ## Project Goal
 
-Building this as a portfolio project to demonstrate end-to-end data engineering and analytics engineering skills — from raw data collection through transformation and visualization.
+Portfolio project demonstrating end-to-end data engineering and analytics engineering skills — from raw data collection through transformation and visualization.
 
 ## Pipeline Architecture
 
@@ -24,7 +28,8 @@ GitHub Actions (orchestration)
   dbt (Silver / Gold)      ← data modeling and transformation
         │
         ▼
-Dashboard / README viz     ← final reporting layer (not started)
+  Evidence Dashboard       ← interactive charts, deployed to GitHub Pages
+  (GitHub Pages)
 ```
 
 ## Tracked Products
@@ -59,6 +64,8 @@ All products are 32GB (2x16GB) desktop memory kits.
 │   └── raw/                         # Local Bronze layer — daily JSONL scrape archives
 ├── infrastructure/
 │   └── setup_athena.py              # One-time Glue database/table provisioning for Athena
+├── scripts/
+│   └── export_csv.py                # Queries Gold Athena table, exports CSV for dashboard
 ├── ram_price_dbt/                   # dbt project (Silver/Gold transformation layer)
 │   ├── models/
 │   │   ├── staging/
@@ -66,22 +73,29 @@ All products are 32GB (2x16GB) desktop memory kits.
 │   │   └── marts/
 │   │       └── fct_ram_prices.sql   # Gold: analytics-ready fact table with price deltas
 │   └── dbt_project.yml
+├── dashboard/                       # Evidence dashboard (GitHub Pages)
+│   ├── pages/
+│   │   └── index.md                 # Main dashboard page (SQL + charts)
+│   └── sources/prices/              # CSV data source consumed by Evidence
 └── .github/
     └── workflows/
         ├── run_scraper.yml          # Daily schedule: runs scraper.py (00:00 UTC)
         ├── setup_athena.yml         # One-time manual trigger: provisions Glue/Athena
-        └── run_dbt.yml              # Daily schedule: runs dbt models (00:30 UTC)
+        ├── run_dbt.yml              # Daily schedule: runs dbt models (00:30 UTC)
+        └── deploy_dashboard.yml     # Triggers after dbt run; builds & deploys to Pages
 ```
 
 ## How It Works
 
 1. **Registry** — `product_registry.py` defines all target products and their retailer URLs in a cross-join matrix.
 2. **Fetch** — `scraper.py` requests each product page, with `curl_cffi` as a browser-impersonation fallback for bot-protected sites like Best Buy.
-3. **Parse** — Price data is extracted from JSON-LD structured data (`<script type="application/ld+json">`) embedded in each page for search engine crawlers. This is more stable than scraping raw HTML.
+3. **Parse** — Price data is extracted from JSON-LD structured data (`<script type="application/ld+json">`) embedded in each page. This is more stable than scraping raw HTML.
 4. **Store (Bronze)** — Results are appended to a daily-partitioned JSONL file under `data/raw/` and also written to an S3 Bronze layer.
 5. **Catalog** — `infrastructure/setup_athena.py` (run once) registers an AWS Glue database/external table over the Bronze S3 path so the raw JSONL can be queried directly with Athena SQL.
 6. **Transform (Silver/Gold)** — dbt models in `ram_price_dbt/` read from Athena: `stg_scrapes` (Silver) filters and casts raw scrapes, and `fct_ram_prices` (Gold) adds day-over-day price deltas and a price rank within each RAM generation.
-7. **Orchestrate** — GitHub Actions runs the scraper daily at 00:00 UTC, then dbt at 00:30 UTC, auto-committing any new local data back to the repository.
+7. **Export** — `scripts/export_csv.py` queries the Gold Athena table and writes results to `dashboard/sources/prices/prices.csv` for Evidence to consume at build time.
+8. **Dashboard** — Evidence builds a static site from SQL + Markdown in `dashboard/pages/` and deploys it to GitHub Pages.
+9. **Orchestrate** — GitHub Actions runs the full chain daily: scraper (00:00 UTC) → dbt (00:30 UTC) → dashboard deploy (on dbt success).
 
 ## Data Format
 
@@ -114,8 +128,8 @@ Each line in a JSONL file is one price observation:
 ### Scraper (Python 3.14)
 
 ```bash
-git clone <repo-url>
-cd ram-price-tracker
+git clone https://github.com/paulhoss/ram-price-pipeline.git
+cd ram-price-pipeline
 pip install -r requirements.txt
 python scraper.py
 ```
@@ -131,6 +145,15 @@ pip install dbt-core dbt-athena
 cd ram_price_dbt
 dbt run
 dbt test
+```
+
+### Dashboard (local preview)
+
+```bash
+cd dashboard
+npm install
+npm run sources
+npm run dev
 ```
 
 **Required environment variables** (set as GitHub Secrets for Actions, or locally in a `.env` file):
@@ -153,6 +176,7 @@ dbt test
 | `curl_cffi` | Browser-impersonation fallback for bot-protected retailers |
 | `boto3` | AWS S3/Glue/Athena client for Bronze lake writes and infrastructure setup |
 | `dbt-core`, `dbt-athena` | Silver/Gold transformations over Athena (separate Python 3.12 venv) |
+| `evidence` | Open-source BI framework for the dashboard (Node.js) |
 
 ## Diagnostic Tool
 
@@ -166,7 +190,8 @@ python json_checker.py
 
 - **Athena/Glue** is provisioned once via `infrastructure/setup_athena.py`, triggered manually through the `setup_athena.yml` GitHub Actions workflow. It does not need to be re-run unless the Glue database/table is dropped.
 - **Cost hygiene**: an S3 lifecycle rule expires the `athena-results/` query-output prefix after 7 days. Raw `raw/` Bronze data and dbt's `dbt/` output prefix are unaffected.
-- **IAM**: a dedicated `github-actions-dbt` user with a least-privilege policy (Glue catalog DDL, Athena query execution, and S3 bucket/object access — including `GetBucketLocation` and `GetTableVersions`) is used for dbt runs, separate from the scraper's credentials.
+- **IAM**: a dedicated `github-actions-dbt` user with a least-privilege policy (Glue catalog DDL, Athena query execution, and S3 bucket/object access — including `GetBucketLocation` and `GetTableVersions`) is used for dbt runs and dashboard CSV export, separate from the scraper's credentials.
+- **Free tier**: this project is designed to run entirely within AWS free tier and GitHub Actions free tier limits for personal accounts.
 
 ## Roadmap
 
@@ -176,9 +201,11 @@ python json_checker.py
 - [x] AWS Athena integration (query Bronze layer with SQL)
 - [x] dbt models (Silver cleaning layer, Gold aggregation layer)
 - [x] GitHub Actions daily automation (dbt)
+- [x] Evidence dashboard (GitHub Pages)
 - [ ] Best Buy scraping
-- [ ] Price trend dashboard or README visualization
+- [ ] Add more retailers (Amazon, Micro Center)
+- [ ] Price drop alerts
 
 ## Status
 
-> **Work in progress.** Newegg scraping, the S3 Bronze layer, Athena/Glue cataloging, and the dbt Silver/Gold transformation layer are all fully functional with daily automated runs. Best Buy support and the final dashboard/visualization layer are planned for upcoming iterations.
+> Newegg scraping, the S3 Bronze layer, Athena/Glue cataloging, the dbt Silver/Gold transformation layer, and the Evidence dashboard deployed to GitHub Pages are all fully functional with daily automated runs. Best Buy support is in development.
